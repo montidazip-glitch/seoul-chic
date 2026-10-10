@@ -1,0 +1,103 @@
+{{template "layout.html" .}}
+{{define "content"}}
+<div class="container py-4">
+  {{if eq .Role "admin"}}
+  <div class="alert alert-warning d-flex align-items-center justify-content-between mb-4 shadow-sm flex-wrap gap-2" role="alert">
+    <div>
+      <i class="bi bi-shield-lock-fill me-2 fs-5 text-dark"></i>
+      <strong class="text-dark">โหมดผู้ดูแลระบบ (Admin View):</strong> นี่คือหน้าเมนูที่ลูกค้าใช้เลือกและสั่งซื้อไก่ทอด
+    </div>
+    <a href="/admin/dashboard" class="btn btn-dark btn-sm fw-bold">
+      <i class="bi bi-speedometer2 me-1"></i>กลับหน้าแดชบอร์ด Admin
+    </a>
+  </div>
+  {{end}}
+
+  <!-- Hero -->
+  <div class="menu-hero glass-card p-5 mb-4 text-center">
+    <div class="menu-hero-emoji">🍗</div>
+    <h1 class="menu-hero-title">เมนูไก่ทอดเกาหลี</h1>
+    <p class="menu-hero-sub text-muted">กรอบนอก นุ่มใน รสชาติต้นตำรับจากโซล</p>
+    {{if .UserName}}
+    <p class="text-accent small mb-0">สวัสดีคุณ <strong>{{.UserName}}</strong> 👋</p>
+    {{end}}
+  </div>
+
+  <!-- Active Promotions Banner (if any) -->
+  {{if .ActivePromos}}
+  <div class="glass-card p-4 mb-4 border border-danger-subtle bg-danger-subtle bg-opacity-10">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+      <div class="d-flex align-items-center gap-3">
+        <div class="fs-2">🎟️</div>
+        <div>
+          <div class="fw-bold text-dark">โปรโมชั่นพิเศษวันนี้!</div>
+          <div class="text-muted small">
+            {{range .ActivePromos}}
+              <span class="badge bg-danger text-white font-monospace me-1">{{.Code}}</span>
+              <span class="text-dark fw-500">{{.Title}} (ส่วนลด {{.FormattedDiscount}})</span>
+              {{if gt .MinOrderAmount 0.0}}<span class="text-secondary small">เมื่อสั่งขั้นต่ำ ฿{{printf "%.0f" .MinOrderAmount}}</span>{{end}}
+              &nbsp;&bull;&nbsp;
+            {{end}}
+          </div>
+        </div>
+      </div>
+      <a href="/cart" class="btn btn-primary btn-sm fw-bold">
+        ไปที่ตะกร้า <i class="bi bi-arrow-right ms-1"></i>
+      </a>
+    </div>
+  </div>
+  {{end}}
+
+  {{if .Products}}
+  <!-- Product Grid -->
+  {{$products := .Products}}
+  <div class="row g-4">
+    {{range $products}}
+    <div class="col-sm-6 col-lg-4">
+      <div class="product-card glass-card h-100">
+        <div class="product-img-wrapper">
+          {{if .ImagePath}}
+            <img src="{{imageURL .ImagePath}}" alt="{{.Name}}" class="product-card-img" onerror="this.onerror=null; this.src=''; this.parentElement.innerHTML='<div class=\'product-card-placeholder\'>🍗</div>';">
+          {{else}}
+            <div class="product-card-placeholder">🍗</div>
+          {{end}}
+          <span class="product-category-badge">{{.Category}}</span>
+        </div>
+        <div class="product-card-body p-4">
+          <h3 class="product-name">{{.Name}}</h3>
+          <p class="product-desc text-muted">{{.Description}}</p>
+          <div class="d-flex align-items-center justify-content-between mt-auto pt-3">
+            <span class="product-price">฿{{printf "%.2f" .Price}}</span>
+            <div class="d-flex align-items-center gap-2">
+              {{if gt .Stock 0}}
+              <form action="/cart/add" method="POST" class="add-cart-form">
+                <input type="hidden" name="_csrf" value="{{$.CSRFToken}}">
+                <input type="hidden" name="product_id" value="{{.ID}}">
+                <div class="qty-control d-flex align-items-center gap-1">
+                  <input type="number" name="quantity" value="1" min="1" max="{{.Stock}}"
+                         class="form-control form-control-sm qty-input" style="width:55px">
+                  <button type="submit" class="btn btn-primary btn-kfry btn-sm" title="เพิ่มลงตะกร้า">
+                    <i class="bi bi-cart-plus"></i>
+                  </button>
+                </div>
+              </form>
+              {{else}}
+              <span class="badge bg-danger">หมด</span>
+              {{end}}
+            </div>
+          </div>
+          <div class="text-muted small mt-1">คงเหลือ {{.Stock}} ชิ้น</div>
+        </div>
+      </div>
+    </div>
+    {{end}}
+  </div>
+  {{else}}
+  <div class="text-center py-5">
+    <div class="display-1">🍗</div>
+    <h3 class="mt-3">ยังไม่มีเมนูในขณะนี้</h3>
+    <p class="text-muted">กรุณากลับมาใหม่ภายหลัง</p>
+  </div>
+  {{end}}
+</div>
+{{end}}

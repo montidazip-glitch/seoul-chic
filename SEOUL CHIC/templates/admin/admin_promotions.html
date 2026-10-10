@@ -1,0 +1,106 @@
+{{template "layout.html" .}}
+{{define "content"}}
+<div class="container py-4">
+  <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+      <h1 class="page-title"><i class="bi bi-tag me-2"></i>จัดการโปรโมชั่นและส่วนลด</h1>
+      <p class="text-muted mb-0">สร้างและกำหนดโค้ดส่วนลดสำหรับลูกค้า</p>
+    </div>
+    <a href="/admin/promotions/new" class="btn btn-primary">
+      <i class="bi bi-plus-lg me-1"></i>สร้างโปรโมชั่นใหม่
+    </a>
+  </div>
+
+  <div class="glass-card p-4">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th>รหัสโค้ด</th>
+            <th>ชื่อโปรโมชั่น</th>
+            <th>ส่วนลด</th>
+            <th>ขั้นต่ำ</th>
+            <th>ระยะเวลาใช้งาน</th>
+            <th>สถานะ</th>
+            <th class="text-end">การจัดการ</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{if .Promotions}}
+            {{range .Promotions}}
+              <tr>
+                <td>
+                  <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 fs-6 fw-bold font-monospace">
+                    {{.Code}}
+                  </span>
+                </td>
+                <td>
+                  <div class="fw-bold">{{.Title}}</div>
+                  {{if .Description}}<small class="text-muted">{{.Description}}</small>{{end}}
+                </td>
+                <td>
+                  <span class="badge bg-warning text-dark fw-bold px-2 py-1">
+                    {{if eq .DiscountType "percentage"}}{{.DiscountValue}}%{{else}}฿{{printf "%.2f" .DiscountValue}}{{end}}
+                  </span>
+                </td>
+                <td>
+                  {{if gt .MinOrderAmount 0.0}}
+                    <span class="text-muted">฿{{printf "%.2f" .MinOrderAmount}}</span>
+                  {{else}}
+                    <span class="text-muted">ไม่มีขั้นต่ำ</span>
+                  {{end}}
+                </td>
+                <td>
+                  <small class="d-block text-secondary">เริ่ม: {{formatDate .StartDate}}</small>
+                  <small class="d-block text-secondary">สิ้นสุด: {{formatDate .EndDate}}</small>
+                </td>
+                <td>
+                  {{if not .IsActive}}
+                    <span class="badge bg-secondary">ปิดใช้งาน</span>
+                  {{else if .IsCurrentlyValid}}
+                    <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>ใช้งานได้</span>
+                  {{else}}
+                    <span class="badge bg-danger">หมดอายุ</span>
+                  {{end}}
+                </td>
+                <td class="text-end">
+                  <div class="d-inline-flex gap-1">
+                    <!-- Toggle Active Form -->
+                    <form action="/admin/promotions/{{.ID}}/toggle" method="POST" class="d-inline">
+                      <input type="hidden" name="_csrf" value="{{$.CSRFToken}}">
+                      <input type="hidden" name="active" value="{{if .IsActive}}false{{else}}true{{end}}">
+                      <button type="submit" class="btn btn-sm {{if .IsActive}}btn-outline-warning{{else}}btn-outline-success{{end}}" title="{{if .IsActive}}คลิกเพื่อปิดใช้งาน{{else}}คลิกเพื่อเปิดใช้งาน{{end}}">
+                        <i class="bi {{if .IsActive}}bi-pause-fill{{else}}bi-play-fill{{end}}"></i>
+                      </button>
+                    </form>
+
+                    <!-- Edit Button -->
+                    <a href="/admin/promotions/{{.ID}}/edit" class="btn btn-sm btn-outline-primary" title="แก้ไข">
+                      <i class="bi bi-pencil"></i>
+                    </a>
+
+                    <!-- Delete Form -->
+                    <form action="/admin/promotions/{{.ID}}/delete" method="POST" class="d-inline" onsubmit="return confirm('ยืนยันการลบโปรโมชั่น {{.Code}} หรือไม่?');">
+                      <input type="hidden" name="_csrf" value="{{$.CSRFToken}}">
+                      <button type="submit" class="btn btn-sm btn-outline-danger" title="ลบ">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {{end}}
+          {{else}}
+            <tr>
+              <td colspan="7" class="text-center py-5 text-muted">
+                <i class="bi bi-tag display-4 d-block mb-3 opacity-50"></i>
+                ยังไม่มีโปรโมชั่นในระบบ คลิกปุ่ม "สร้างโปรโมชั่นใหม่" เพื่อเริ่มต้น
+              </td>
+            </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{{end}}

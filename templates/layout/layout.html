@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Seoul Chic — ระบบจัดการร้านไก่ทอดเกาหลีออนไลน์">
+  <title>{{.Title}} | 🍗 Seoul Chic</title>
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Custom CSS -->
+  <link href="/static/css/style.css" rel="stylesheet">
+</head>
+<body>
+
+<!-- ═══════════════════════════════ NAVBAR ═══════════════════════════════════ -->
+<nav class="navbar navbar-expand-lg navbar-dark kfry-navbar sticky-top">
+  <div class="container">
+    <a class="navbar-brand fw-800" href="/">
+      <span class="brand-icon">🍗</span>
+      <span class="brand-name">Seoul Chic</span>
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navMenu">
+      <ul class="navbar-nav ms-auto align-items-center gap-1">
+        {{if eq .Role "admin"}}
+          <li class="nav-item"><a class="nav-link text-warning fw-bold" href="/menu" title="ไปที่หน้าร้านสำหรับลูกค้าเพื่อสั่งซื้อไก่ทอด"><i class="bi bi-shop"></i> สั่งซื้อ (หน้าร้าน)</a></li>
+          <li class="nav-item"><a class="nav-link" href="/cart"><i class="bi bi-cart3"></i> ตะกร้า</a></li>
+          <li class="nav-item"><a class="nav-link" href="/admin/dashboard"><i class="bi bi-speedometer2"></i> แดชบอร์ด</a></li>
+          <li class="nav-item"><a class="nav-link" href="/admin/products"><i class="bi bi-box-seam"></i> สินค้า</a></li>
+          <li class="nav-item"><a class="nav-link" href="/admin/orders"><i class="bi bi-receipt"></i> คำสั่งซื้อ</a></li>
+          <li class="nav-item"><a class="nav-link" href="/admin/promotions"><i class="bi bi-tag"></i> โปรโมชั่น</a></li>
+          <li class="nav-item"><a class="nav-link" href="/admin/reports"><i class="bi bi-graph-up"></i> รายงานยอดขาย</a></li>
+          <li class="nav-item"><a class="nav-link" href="/admin/customers"><i class="bi bi-people"></i> ลูกค้า</a></li>
+          <li class="nav-item ms-2">
+            <form action="/logout" method="POST" class="d-inline">
+              <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+              <button type="submit" class="btn btn-outline-light btn-sm"><i class="bi bi-box-arrow-right"></i> ออกจากระบบ</button>
+            </form>
+          </li>
+        {{else if eq .Role "customer"}}
+          <li class="nav-item"><a class="nav-link" href="/menu"><i class="bi bi-grid"></i> เมนู</a></li>
+          <li class="nav-item"><a class="nav-link" href="/cart"><i class="bi bi-cart3"></i> ตะกร้า</a></li>
+          <li class="nav-item"><a class="nav-link" href="/orders"><i class="bi bi-bag-check"></i> คำสั่งซื้อ</a></li>
+          <li class="nav-item ms-2">
+            <form action="/logout" method="POST" class="d-inline">
+              <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+              <button type="submit" class="btn btn-outline-light btn-sm"><i class="bi bi-box-arrow-right"></i> ออกจากระบบ</button>
+            </form>
+          </li>
+        {{else}}
+          <li class="nav-item"><a class="nav-link" href="/menu"><i class="bi bi-grid"></i> เมนูอาหาร</a></li>
+          <li class="nav-item"><a class="nav-link" href="/login"><i class="bi bi-person-circle"></i> เข้าสู่ระบบ</a></li>
+          <li class="nav-item"><a class="nav-link text-warning fw-semibold" href="/admin/login"><i class="bi bi-shield-lock"></i> แอดมิน</a></li>
+          <li class="nav-item"><a class="nav-link btn-glow ms-2 px-3 rounded-pill" href="/register"><i class="bi bi-person-plus"></i> สมัครสมาชิก</a></li>
+        {{end}}
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════ FLASH MESSAGES ════════════════════════════ -->
+<div class="container mt-3">
+  {{if .Flashes}}
+    {{range .Flashes.success}}
+      <div class="alert alert-success alert-dismissible fade show kfry-alert" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>{{.}}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {{end}}
+    {{range .Flashes.error}}
+      <div class="alert alert-danger alert-dismissible fade show kfry-alert" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>{{.}}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {{end}}
+  {{end}}
+</div>
+
+<!-- ═══════════════════════════════ PAGE CONTENT ══════════════════════════════ -->
+<main class="kfry-main">
+  {{template "content" .}}
+</main>
+
+<!-- ═══════════════════════════════ FOOTER ═══════════════════════════════════ -->
+<footer class="kfry-footer text-center py-4 mt-5">
+  <p class="mb-0 text-muted">© 2026 <strong>Seoul Chic</strong> — ไก่ทอดเกาหลีแท้ ส่งตรงถึงคุณ 🍗</p>
+</footer>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Custom JS -->
+<script src="/static/js/main.js"></script>
+</body>
+</html>

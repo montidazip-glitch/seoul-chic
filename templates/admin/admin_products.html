@@ -1,0 +1,84 @@
+{{template "layout.html" .}}
+{{define "content"}}
+<div class="container py-4">
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+      <h1 class="page-title"><i class="bi bi-box-seam me-2"></i>จัดการสินค้า</h1>
+      <p class="text-muted mb-0">สินค้าทั้งหมด {{len .Products}} รายการ</p>
+    </div>
+    <a href="/admin/products/new" class="btn btn-primary btn-kfry">
+      <i class="bi bi-plus-lg me-2"></i>เพิ่มสินค้าใหม่
+    </a>
+  </div>
+
+  <div class="glass-card">
+    <div class="table-responsive">
+      <table class="table kfry-table mb-0">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>รูป</th>
+            <th>ชื่อสินค้า</th>
+            <th>หมวดหมู่</th>
+            <th>ราคา</th>
+            <th>คงเหลือ</th>
+            <th>สถานะ</th>
+            <th>การดำเนินการ</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Products}}
+          <tr>
+            <td class="text-muted">{{.ID}}</td>
+            <td>
+              {{if .ImagePath}}
+                <img src="{{imageURL .ImagePath}}" alt="{{.Name}}" class="product-thumb">
+              {{else}}
+                <div class="product-thumb-placeholder">🍗</div>
+              {{end}}
+            </td>
+            <td><strong>{{.Name}}</strong></td>
+            <td><span class="badge bg-secondary">{{.Category}}</span></td>
+            <td class="text-accent fw-600">฿{{printf "%.2f" .Price}}</td>
+            <td>
+              {{if gt .Stock 0}}
+                <span class="text-success">{{.Stock}}</span>
+              {{else}}
+                <span class="text-danger">หมด</span>
+              {{end}}
+            </td>
+            <td>
+              {{if eq .Status "available"}}
+                <span class="badge bg-success">พร้อมขาย</span>
+              {{else}}
+                <span class="badge bg-secondary">ไม่พร้อม</span>
+              {{end}}
+            </td>
+            <td>
+              <div class="d-flex gap-2">
+                <a href="/admin/products/{{.ID}}/edit" class="btn btn-sm btn-outline-info">
+                  <i class="bi bi-pencil"></i>
+                </a>
+                <form action="/admin/products/{{.ID}}/delete" method="POST" class="d-inline"
+                      onsubmit="return confirm('ยืนยันการลบสินค้า {{.Name}}?')">
+                  <input type="hidden" name="_csrf" value="{{$.CSRFToken}}">
+                  <button type="submit" class="btn btn-sm btn-outline-danger">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {{else}}
+          <tr>
+            <td colspan="8" class="text-center py-5 text-muted">
+              <i class="bi bi-inbox display-6 d-block mb-2"></i>ยังไม่มีสินค้า
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{{end}}

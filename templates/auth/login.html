@@ -1,0 +1,46 @@
+{{template "layout.html" .}}
+{{define "content"}}
+<div class="auth-wrapper d-flex align-items-center justify-content-center py-5">
+  <div class="auth-card glass-card p-4 p-md-5">
+    <div class="text-center mb-4">
+      <div class="auth-logo">🍗</div>
+      <h1 class="auth-title">Seoul Chic</h1>
+      <p class="text-muted">เข้าสู่ระบบเพื่อสั่งไก่ทอดเกาหลี</p>
+    </div>
+
+    <form action="/login" method="POST" id="loginForm" novalidate>
+      <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+      <div class="mb-3">
+        <label for="email" class="form-label fw-semibold">User / อีเมล</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-person"></i></span>
+          <input type="email" class="form-control" id="email" name="email"
+                 placeholder="กรอก User หรือ อีเมล" required autocomplete="email">
+        </div>
+      </div>
+      <div class="mb-4">
+        <label for="password" class="form-label fw-semibold">รหัสผ่าน</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-lock"></i></span>
+          <input type="password" class="form-control" id="password" name="password"
+                 placeholder="••••••••" required autocomplete="current-password">
+          <button class="btn btn-outline-secondary" type="button" id="togglePass">
+            <i class="bi bi-eye"></i>
+          </button>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-kfry w-100 mb-3" id="loginBtn">
+        <i class="bi bi-box-arrow-in-right me-2"></i>เข้าสู่ระบบ
+      </button>
+    </form>
+    
+    <div class="text-center text-muted small">
+      <p class="mb-2">ยังไม่มีบัญชี? <a href="/register" class="link-accent">สมัครสมาชิกฟรี</a></p>
+      <hr class="my-3">
+      <a href="/admin/login" class="text-decoration-none text-muted">
+        <i class="bi bi-shield-lock me-1"></i>เข้าสู่ระบบผู้ดูแลระบบ (Admin)
+      </a>
+    </div>
+  </div>
+</div>
+{{end}}

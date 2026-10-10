@@ -1,0 +1,256 @@
+{{template "layout.html" .}}
+{{define "content"}}
+<div class="container py-4">
+  <!-- Page Header -->
+  <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+    <div>
+      <h1 class="page-title"><i class="bi bi-graph-up me-2"></i>รายงานยอดขายและสถิติ</h1>
+      <p class="text-muted mb-0">ข้อมูลวิเคราะห์ยอดขายและสินค้าขายดีของ Seoul Chic</p>
+    </div>
+    <div class="d-flex gap-2">
+      <button onclick="window.print()" class="btn btn-outline-danger btn-sm">
+        <i class="bi bi-printer me-1"></i>พิมพ์รายงาน
+      </button>
+    </div>
+  </div>
+
+  <!-- Filter Toolbar -->
+  <div class="glass-card p-3 mb-4">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+      <!-- Quick Range Presets -->
+      <div class="btn-group" role="group">
+        <a href="/admin/reports?range=today" class="btn btn-sm {{if eq .DateRange "today"}}btn-primary{{else}}btn-outline-secondary{{end}}">วันนี้</a>
+        <a href="/admin/reports?range=week" class="btn btn-sm {{if eq .DateRange "week"}}btn-primary{{else}}btn-outline-secondary{{end}}">7 วันล่าสุด</a>
+        <a href="/admin/reports?range=month" class="btn btn-sm {{if eq .DateRange "month"}}btn-primary{{else}}btn-outline-secondary{{end}}">เดือนนี้</a>
+      </div>
+
+      <!-- Custom Date Filter Form -->
+      <form action="/admin/reports" method="GET" class="d-flex align-items-center gap-2 flex-wrap">
+        <input type="hidden" name="range" value="custom">
+        <div class="input-group input-group-sm" style="max-width: 320px">
+          <input type="date" name="start_date" class="form-control" value="{{.StartDate}}" required>
+          <span class="input-group-text bg-light border-secondary-subtle text-muted">ถึง</span>
+          <input type="date" name="end_date" class="form-control" value="{{.EndDate}}" required>
+        </div>
+        <button type="submit" class="btn btn-sm btn-outline-primary">
+          <i class="bi bi-funnel me-1"></i>กรองข้อมูล
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-sm-6 col-lg-3">
+      <div class="stat-card glass-card p-3">
+        <div class="stat-icon bg-success-soft"><i class="bi bi-cash-stack"></i></div>
+        <div class="stat-value text-success">฿{{printf "%.2f" .Summary.TotalRevenue}}</div>
+        <div class="stat-label">ยอดขายรวมสุทธิ</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="stat-card glass-card p-3">
+        <div class="stat-icon bg-primary-soft"><i class="bi bi-bag-check"></i></div>
+        <div class="stat-value">{{.Summary.TotalOrders}}</div>
+        <div class="stat-label">จำนวนออเดอร์ทั้งหมด (สำเร็จ: {{.Summary.CompletedOrders}})</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="stat-card glass-card p-3">
+        <div class="stat-icon bg-warning-soft"><i class="bi bi-calculator"></i></div>
+        <div class="stat-value">฿{{printf "%.2f" .Summary.AverageOrderVal}}</div>
+        <div class="stat-label">ยอดเฉลี่ยต่อบิล (AOV)</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="stat-card glass-card p-3">
+        <div class="stat-icon bg-danger-soft"><i class="bi bi-tag-fill"></i></div>
+        <div class="stat-value text-danger">฿{{printf "%.2f" .Summary.TotalDiscounts}}</div>
+        <div class="stat-label">ส่วนลดโปรโมชั่นทั้งหมดที่ให้</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts Row -->
+  <div class="row g-4 mb-4">
+    <!-- Trend Chart -->
+    <div class="col-lg-8">
+      <div class="glass-card p-4 h-100">
+        <h5 class="fw-bold mb-3"><i class="bi bi-graph-up-arrow me-2 text-primary"></i>แนวโน้มยอดขายรายวัน (Revenue Trend)</h5>
+        <div style="height: 280px; position: relative;">
+          <canvas id="revenueTrendChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Products Chart -->
+    <div class="col-lg-4">
+      <div class="glass-card p-4 h-100">
+        <h5 class="fw-bold mb-3"><i class="bi bi-trophy me-2 text-warning"></i>สินค้าขายดีอันดับต้น</h5>
+        <div style="height: 280px; position: relative;">
+          <canvas id="topProductsChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detailed Tables Row -->
+  <div class="row g-4">
+    <!-- Top Selling Products Table -->
+    <div class="col-lg-6">
+      <div class="glass-card p-4">
+        <h5 class="fw-bold mb-3"><i class="bi bi-fire me-2 text-danger"></i>ตารางอันดับเมนูขายดี</h5>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>เมนูสินค้า</th>
+                <th>หมวดหมู่</th>
+                <th class="text-center">จำนวนที่ขายได้</th>
+                <th class="text-end">ยอดขายรวม</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{if .TopProducts}}
+                {{range $i, $p := .TopProducts}}
+                  <tr>
+                    <td><span class="badge {{if eq $i 0}}bg-warning text-dark{{else if eq $i 1}}bg-secondary{{else if eq $i 2}}bg-danger{{else}}bg-dark{{end}}">{{add $i 1}}</span></td>
+                    <td class="fw-bold">{{$p.ProductName}}</td>
+                    <td><span class="badge bg-secondary-subtle text-dark">{{$p.Category}}</span></td>
+                    <td class="text-center fw-bold text-warning">{{$p.TotalSold}} ชิ้น</td>
+                    <td class="text-end fw-bold">฿{{printf "%.2f" $p.TotalSales}}</td>
+                  </tr>
+                {{end}}
+              {{else}}
+                <tr>
+                  <td colspan="5" class="text-center py-4 text-muted">ยังไม่มียอดขายในช่วงเวลานี้</td>
+                </tr>
+              {{end}}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Daily Breakdown Table -->
+    <div class="col-lg-6">
+      <div class="glass-card p-4">
+        <h5 class="fw-bold mb-3"><i class="bi bi-calendar3 me-2 text-info"></i>สรุปยอดขายแยกรายวัน</h5>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th>วันที่</th>
+                <th class="text-center">จำนวนออเดอร์</th>
+                <th class="text-end">ยอดขาย (บาท)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{if .DailyTrends}}
+                {{range .DailyTrends}}
+                  <tr>
+                    <td class="font-monospace">{{.Date}}</td>
+                    <td class="text-center"><span class="badge bg-primary-subtle text-primary">{{.OrderCount}} ออเดอร์</span></td>
+                    <td class="text-end fw-bold text-success">฿{{printf "%.2f" .Revenue}}</td>
+                  </tr>
+                {{end}}
+              {{else}}
+                <tr>
+                  <td colspan="3" class="text-center py-4 text-muted">ยังไม่มีรายการสั่งซื้อในช่วงเวลานี้</td>
+                </tr>
+              {{end}}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Chart.js Setup Scripts -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const trendDates = {{.TrendDatesJSON}};
+    const trendRevenues = {{.TrendRevenuesJSON}};
+    const topNames = {{.TopNamesJSON}};
+    const topSold = {{.TopSoldJSON}};
+
+    // 1. Revenue Trend Line Chart
+    const trendCtx = document.getElementById('revenueTrendChart');
+    if (trendCtx && trendDates && trendDates.length > 0) {
+      new Chart(trendCtx, {
+        type: 'line',
+        data: {
+          labels: trendDates,
+          datasets: [{
+            label: 'ยอดขาย (บาท)',
+            data: trendRevenues,
+            borderColor: '#DC2626',
+            backgroundColor: 'rgba(220, 38, 38, 0.1)',
+            fill: true,
+            tension: 0.35,
+            pointBackgroundColor: '#DC2626',
+            pointRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: { color: '#E2E8F0' },
+              ticks: { color: '#64748B', callback: function(val) { return '฿' + val; } }
+            },
+            x: {
+              grid: { color: '#F1F5F9' },
+              ticks: { color: '#64748B' }
+            }
+          }
+        }
+      });
+    }
+
+    // 2. Top Products Bar Chart
+    const topCtx = document.getElementById('topProductsChart');
+    if (topCtx && topNames && topNames.length > 0) {
+      new Chart(topCtx, {
+        type: 'bar',
+        data: {
+          labels: topNames.slice(0, 5),
+          datasets: [{
+            label: 'จำนวนที่ขายได้ (ชิ้น)',
+            data: topSold.slice(0, 5),
+            backgroundColor: [
+              '#DC2626', '#EA580C', '#D97706', '#F59E0B', '#EF4444'
+            ],
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: { color: '#E2E8F0' },
+              ticks: { color: '#64748B', stepSize: 1 }
+            },
+            x: {
+              grid: { display: false },
+              ticks: { color: '#64748B', maxRotation: 45, minRotation: 0 }
+            }
+          }
+        }
+      });
+    }
+  });
+</script>
+{{end}}

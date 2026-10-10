@@ -1,0 +1,78 @@
+{{template "layout.html" .}}
+{{define "content"}}
+<div class="container py-4" style="max-width:760px">
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <h1 class="page-title"><i class="bi bi-cart3 me-2"></i>ตะกร้าสินค้า</h1>
+    <a href="/menu" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>เลือกสินค้าต่อ
+    </a>
+  </div>
+
+  {{if .Cart}}
+  <div class="glass-card p-4 mb-4">
+    <table class="table mb-0">
+      <thead><tr><th>สินค้า</th><th class="text-center">จำนวน</th><th class="text-end">ราคา</th><th></th></tr></thead>
+      <tbody id="cartTable">
+        {{range .Cart}}
+        <tr>
+          <td>
+            <div class="fw-600">{{.ProductName}}</div>
+            <div class="text-muted small">฿{{printf "%.2f" .UnitPrice}} / ชิ้น</div>
+          </td>
+          <td class="text-center">
+            <form action="/cart/update" method="POST" class="d-inline-flex align-items-center gap-1">
+              <input type="hidden" name="_csrf" value="{{$.CSRFToken}}">
+              <input type="hidden" name="product_id" value="{{.ProductID}}">
+              <input type="number" name="quantity" value="{{.Quantity}}" min="0" max="99"
+                     class="form-control form-control-sm text-center" style="width:64px"
+                     onchange="this.form.submit()">
+            </form>
+          </td>
+          <td class="text-end text-accent fw-600">฿{{printf "%.2f" (mul .UnitPrice .Quantity)}}</td>
+          <td class="text-end">
+            <form action="/cart/update" method="POST">
+              <input type="hidden" name="_csrf" value="{{$.CSRFToken}}">
+              <input type="hidden" name="product_id" value="{{.ProductID}}">
+              <input type="hidden" name="quantity" value="0">
+              <button type="submit" class="btn btn-sm btn-link text-danger p-0">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </form>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+      <tfoot>
+        <tr class="border-top">
+          <td colspan="2" class="text-end fw-bold">รวม</td>
+          <td class="text-end text-accent fw-800 fs-5">฿{{printf "%.2f" .Total}}</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <div class="d-flex justify-content-between">
+    <form action="/cart/clear" method="POST">
+      <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+      <button type="submit" class="btn btn-outline-danger"
+              onclick="return confirm('ล้างตะกร้าทั้งหมด?')">
+        <i class="bi bi-trash me-1"></i>ล้างตะกร้า
+      </button>
+    </form>
+    <a href="/orders/new" class="btn btn-primary btn-kfry px-5">
+      <i class="bi bi-bag-check me-2"></i>ดำเนินการสั่งซื้อ
+    </a>
+  </div>
+  {{else}}
+  <div class="glass-card text-center p-5">
+    <div class="display-1 mb-3">🛒</div>
+    <h3>ตะกร้าว่างเปล่า</h3>
+    <p class="text-muted">เลือกไก่ทอดอร่อยๆ จากเมนูเลย!</p>
+    <a href="/menu" class="btn btn-primary btn-kfry">
+      <i class="bi bi-grid me-2"></i>ดูเมนู
+    </a>
+  </div>
+  {{end}}
+</div>
+{{end}}
