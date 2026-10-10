@@ -100,6 +100,7 @@ func main() {
 	adminR.HandleFunc("/orders", admin.OrderList).Methods("GET")
 	adminR.HandleFunc("/orders/{id:[0-9]+}", admin.OrderDetail).Methods("GET")
 	adminR.HandleFunc("/orders/{id:[0-9]+}/status", admin.OrderUpdateStatus).Methods("POST")
+	adminR.HandleFunc("/orders/{id:[0-9]+}/payment-status", admin.OrderUpdatePaymentStatus).Methods("POST")
 	adminR.HandleFunc("/promotions", admin.PromotionList).Methods("GET")
 	adminR.HandleFunc("/promotions/new", admin.PromotionNewGET).Methods("GET")
 	adminR.HandleFunc("/promotions/new", admin.PromotionNewPOST).Methods("POST")

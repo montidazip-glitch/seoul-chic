@@ -11,6 +11,7 @@ type Order struct {
 	ID              int
 	CustomerID      int
 	CustomerName    string
+	CustomerEmail   string
 	OrderType       string
 	DeliveryAddress string
 	TotalPrice      float64
@@ -20,16 +21,21 @@ type Order struct {
 	CreatedAt       time.Time
 	Items           []OrderItem
 	Payment         *Payment
+	Subtotal        float64
+	TotalItems      int
 }
 
 // OrderItem represents a row in the order_items table.
 type OrderItem struct {
-	ID          int
-	OrderID     int
-	ProductID   int
-	ProductName string
-	Quantity    int
-	UnitPrice   float64
+	ID              int
+	OrderID         int
+	ProductID       int
+	ProductName     string
+	ProductCategory string
+	ProductImage    string
+	Quantity        int
+	UnitPrice       float64
+	Subtotal        float64
 }
 
 // CartItem is used transiently during checkout (not stored in DB directly).
@@ -113,12 +119,12 @@ func CreateOrder(db *sql.DB, o *Order, items []CartItem, paymentMethod string) (
 func GetOrder(db *sql.DB, id int) (*Order, error) {
 	o := &Order{}
 	err := db.QueryRow(
-		`SELECT o.id, o.customer_id, u.name, o.order_type, COALESCE(o.delivery_address,''),
+		`SELECT o.id, o.customer_id, u.name, COALESCE(u.email, ''), o.order_type, COALESCE(o.delivery_address,''),
 		        o.total_price, COALESCE(o.discount_amount, 0), COALESCE(o.promotion_code, ''),
 		        o.status, o.created_at
 		 FROM orders o JOIN users u ON u.id = o.customer_id
 		 WHERE o.id = ?`, id,
-	).Scan(&o.ID, &o.CustomerID, &o.CustomerName, &o.OrderType, &o.DeliveryAddress,
+	).Scan(&o.ID, &o.CustomerID, &o.CustomerName, &o.CustomerEmail, &o.OrderType, &o.DeliveryAddress,
 		&o.TotalPrice, &o.DiscountAmount, &o.PromotionCode, &o.Status, &o.CreatedAt)
 	if err != nil {
 		return nil, err
@@ -126,7 +132,7 @@ func GetOrder(db *sql.DB, id int) (*Order, error) {
 
 	// Fetch items
 	rows, err := db.Query(
-		`SELECT oi.id, oi.order_id, oi.product_id, p.name, oi.quantity, oi.unit_price
+		`SELECT oi.id, oi.order_id, oi.product_id, p.name, COALESCE(p.category, ''), COALESCE(p.image_path, ''), oi.quantity, oi.unit_price
 		 FROM order_items oi JOIN products p ON p.id = oi.product_id
 		 WHERE oi.order_id = ?`, id,
 	)
@@ -134,13 +140,20 @@ func GetOrder(db *sql.DB, id int) (*Order, error) {
 		return nil, err
 	}
 	defer rows.Close()
+	var rawSubtotal float64
+	var totalQty int
 	for rows.Next() {
 		var item OrderItem
-		if err := rows.Scan(&item.ID, &item.OrderID, &item.ProductID, &item.ProductName, &item.Quantity, &item.UnitPrice); err != nil {
+		if err := rows.Scan(&item.ID, &item.OrderID, &item.ProductID, &item.ProductName, &item.ProductCategory, &item.ProductImage, &item.Quantity, &item.UnitPrice); err != nil {
 			return nil, err
 		}
+		item.Subtotal = item.UnitPrice * float64(item.Quantity)
+		rawSubtotal += item.Subtotal
+		totalQty += item.Quantity
 		o.Items = append(o.Items, item)
 	}
+	o.Subtotal = rawSubtotal
+	o.TotalItems = totalQty
 
 	// Fetch payment
 	p := &Payment{}
@@ -169,13 +182,16 @@ func ListOrdersByCustomer(db *sql.DB, customerID int) ([]Order, error) {
 	return scanOrders(rows)
 }
 
-// ListAllOrders returns all orders for the admin view.
+// ListAllOrders returns all orders for the admin view with items & payment details.
 func ListAllOrders(db *sql.DB) ([]Order, error) {
 	rows, err := db.Query(
-		`SELECT o.id, o.customer_id, u.name, o.order_type, COALESCE(o.delivery_address,''),
+		`SELECT o.id, o.customer_id, u.name, COALESCE(u.email, ''), o.order_type, COALESCE(o.delivery_address,''),
 		        o.total_price, COALESCE(o.discount_amount, 0), COALESCE(o.promotion_code, ''),
-		        o.status, o.created_at
-		 FROM orders o JOIN users u ON u.id = o.customer_id
+		        o.status, o.created_at,
+		        COALESCE(p.payment_method, 'cash'), COALESCE(p.payment_status, 'pending')
+		 FROM orders o 
+		 JOIN users u ON u.id = o.customer_id
+		 LEFT JOIN payments p ON p.order_id = o.id
 		 ORDER BY o.created_at DESC`,
 	)
 	if err != nil {
@@ -186,14 +202,53 @@ func ListAllOrders(db *sql.DB) ([]Order, error) {
 	var orders []Order
 	for rows.Next() {
 		var o Order
-		if err := rows.Scan(&o.ID, &o.CustomerID, &o.CustomerName, &o.OrderType,
+		var payMethod, payStatus string
+		if err := rows.Scan(&o.ID, &o.CustomerID, &o.CustomerName, &o.CustomerEmail, &o.OrderType,
 			&o.DeliveryAddress, &o.TotalPrice, &o.DiscountAmount, &o.PromotionCode,
-			&o.Status, &o.CreatedAt); err != nil {
+			&o.Status, &o.CreatedAt, &payMethod, &payStatus); err != nil {
 			return nil, err
+		}
+		o.Payment = &Payment{
+			OrderID:       o.ID,
+			PaymentMethod: payMethod,
+			PaymentStatus: payStatus,
 		}
 		orders = append(orders, o)
 	}
-	return orders, rows.Err()
+
+	// Fetch order items summary for each order
+	for i := range orders {
+		itemRows, err := db.Query(
+			`SELECT oi.id, oi.order_id, oi.product_id, p.name, COALESCE(p.category, ''), COALESCE(p.image_path, ''), oi.quantity, oi.unit_price
+			 FROM order_items oi JOIN products p ON p.id = oi.product_id
+			 WHERE oi.order_id = ?`, orders[i].ID,
+		)
+		if err == nil {
+			var rawSubtotal float64
+			var totalQty int
+			for itemRows.Next() {
+				var item OrderItem
+				if err := itemRows.Scan(&item.ID, &item.OrderID, &item.ProductID, &item.ProductName, &item.ProductCategory, &item.ProductImage, &item.Quantity, &item.UnitPrice); err == nil {
+					item.Subtotal = item.UnitPrice * float64(item.Quantity)
+					rawSubtotal += item.Subtotal
+					totalQty += item.Quantity
+					orders[i].Items = append(orders[i].Items, item)
+				}
+			}
+			itemRows.Close()
+			orders[i].Subtotal = rawSubtotal
+			orders[i].TotalItems = totalQty
+		}
+	}
+
+	return orders, nil
+}
+
+// GetPrevAndNextOrderID returns the previous and next order IDs relative to currentID for quick navigation.
+func GetPrevAndNextOrderID(db *sql.DB, currentID int) (prevID int, nextID int) {
+	_ = db.QueryRow(`SELECT id FROM orders WHERE id < ? ORDER BY id DESC LIMIT 1`, currentID).Scan(&prevID)
+	_ = db.QueryRow(`SELECT id FROM orders WHERE id > ? ORDER BY id ASC LIMIT 1`, currentID).Scan(&nextID)
+	return
 }
 
 // UpdateOrderStatus changes an order's status.

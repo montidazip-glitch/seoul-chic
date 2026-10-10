@@ -154,29 +154,80 @@ func (h *AdminHandler) ProductDeletePOST(w http.ResponseWriter, r *http.Request)
 // ─── Orders ──────────────────────────────────────────────────────────────────
 
 func (h *AdminHandler) OrderList(w http.ResponseWriter, r *http.Request) {
-	orders, err := models.ListAllOrders(h.DB)
+	allOrders, err := models.ListAllOrders(h.DB)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
-	filterStatus := r.URL.Query().Get("status")
-	if filterStatus != "" {
-		filtered := orders[:0]
-		for _, o := range orders {
-			if o.Status == filterStatus {
-				filtered = append(filtered, o)
+
+	filterStatus := strings.TrimSpace(r.URL.Query().Get("status"))
+	filterType := strings.TrimSpace(r.URL.Query().Get("type"))
+	filterPayment := strings.TrimSpace(r.URL.Query().Get("payment_status"))
+	searchQuery := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
+
+	// Stats counters across ALL orders
+	var totalOrders, pendingOrders, preparingOrders, completedOrders, cancelledOrders int
+	var totalRevenue float64
+
+	for _, o := range allOrders {
+		totalOrders++
+		if o.Status == "pending" {
+			pendingOrders++
+		} else if o.Status == "preparing" || o.Status == "ready" || o.Status == "delivering" {
+			preparingOrders++
+		} else if o.Status == "completed" {
+			completedOrders++
+		} else if o.Status == "cancelled" {
+			cancelledOrders++
+		}
+
+		if o.Status != "cancelled" {
+			totalRevenue += o.TotalPrice
+		}
+	}
+
+	// Filter orders for display
+	filtered := make([]models.Order, 0, len(allOrders))
+	for _, o := range allOrders {
+		if filterStatus != "" && o.Status != filterStatus {
+			continue
+		}
+		if filterType != "" && o.OrderType != filterType {
+			continue
+		}
+		if filterPayment != "" && (o.Payment == nil || o.Payment.PaymentStatus != filterPayment) {
+			continue
+		}
+		if searchQuery != "" {
+			idStr := strconv.Itoa(o.ID)
+			nameLower := strings.ToLower(o.CustomerName)
+			emailLower := strings.ToLower(o.CustomerEmail)
+			if !strings.Contains(idStr, searchQuery) &&
+				!strings.Contains(nameLower, searchQuery) &&
+				!strings.Contains(emailLower, searchQuery) {
+				continue
 			}
 		}
-		orders = filtered
+		filtered = append(filtered, o)
 	}
+
 	data := map[string]interface{}{
-		"Title":        "จัดการคำสั่งซื้อ",
-		"Role":         "admin",
-		"Orders":       orders,
-		"FilterStatus": filterStatus,
-		"Statuses":     models.ValidOrderStatuses,
-		"CSRFToken":    middleware.GetCSRFToken(r, w),
-		"Flashes":      flashData(r, w),
+		"Title":           "จัดการและติดตามคำสั่งซื้อ",
+		"Role":            "admin",
+		"Orders":          filtered,
+		"FilterStatus":    filterStatus,
+		"FilterType":      filterType,
+		"FilterPayment":   filterPayment,
+		"SearchQuery":     searchQuery,
+		"Statuses":        models.ValidOrderStatuses,
+		"TotalOrders":     totalOrders,
+		"PendingOrders":   pendingOrders,
+		"PreparingOrders": preparingOrders,
+		"CompletedOrders": completedOrders,
+		"CancelledOrders": cancelledOrders,
+		"TotalRevenue":    totalRevenue,
+		"CSRFToken":       middleware.GetCSRFToken(r, w),
+		"Flashes":         flashData(r, w),
 	}
 	h.Tmpl.ExecuteTemplate(w, "admin_orders.html", data)
 }
@@ -192,11 +243,16 @@ func (h *AdminHandler) OrderDetail(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+
+	prevID, nextID := models.GetPrevAndNextOrderID(h.DB, id)
+
 	data := map[string]interface{}{
 		"Title":     "รายละเอียดคำสั่งซื้อ #" + strconv.Itoa(id),
 		"Role":      "admin",
 		"Order":     order,
 		"Statuses":  models.ValidOrderStatuses,
+		"PrevID":    prevID,
+		"NextID":    nextID,
 		"CSRFToken": middleware.GetCSRFToken(r, w),
 		"Flashes":   flashData(r, w),
 	}
@@ -212,12 +268,35 @@ func (h *AdminHandler) OrderUpdateStatus(w http.ResponseWriter, r *http.Request)
 	newStatus := r.FormValue("status")
 	if err := models.UpdateOrderStatus(h.DB, id, newStatus); err != nil {
 		session.SetFlash(r, w, "error", "ไม่สามารถอัปเดตสถานะได้")
-		http.Redirect(w, r, "/admin/orders/"+strconv.Itoa(id), http.StatusFound)
+	} else {
+		// Broadcast the new status to any SSE clients watching this order
+		h.Hub.BroadcastStatus(id, newStatus)
+		session.SetFlash(r, w, "success", "อัปเดตสถานะเป็น '"+newStatus+"' เรียบร้อยแล้ว!")
+	}
+	referer := r.Header.Get("Referer")
+	if referer != "" && strings.Contains(referer, "/admin/orders") {
+		http.Redirect(w, r, referer, http.StatusFound)
 		return
 	}
-	// Broadcast the new status to any SSE clients watching this order
-	h.Hub.BroadcastStatus(id, newStatus)
-	session.SetFlash(r, w, "success", "อัปเดตสถานะเป็น '"+newStatus+"' สำเร็จ!")
+	http.Redirect(w, r, "/admin/orders/"+strconv.Itoa(id), http.StatusFound)
+}
+
+func (h *AdminHandler) OrderUpdatePaymentStatus(w http.ResponseWriter, r *http.Request) {
+	id, ok := parseID(r, "id")
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	newPaymentStatus := r.FormValue("payment_status")
+	if err := models.UpdatePaymentStatus(h.DB, id, newPaymentStatus); err != nil {
+		session.SetFlash(r, w, "error", "ไม่สามารถอัปเดตสถานะการชำระเงินได้")
+	} else {
+		statusThai := "ชำระเงินแล้ว"
+		if newPaymentStatus != "paid" {
+			statusThai = "รอชำระเงิน"
+		}
+		session.SetFlash(r, w, "success", "อัปเดตสถานะการชำระเงินเป็น '"+statusThai+"' เรียบร้อยแล้ว!")
+	}
 	http.Redirect(w, r, "/admin/orders/"+strconv.Itoa(id), http.StatusFound)
 }
 

@@ -1,113 +1,318 @@
 {{template "layout.html" .}}
 {{define "content"}}
-<div class="container py-4" style="max-width:860px">
-  <a href="/admin/orders" class="btn btn-sm btn-outline-secondary mb-4">
-    <i class="bi bi-arrow-left me-1"></i>กลับ
-  </a>
-
-  <div class="d-flex align-items-start justify-content-between mb-4 flex-wrap gap-3">
-    <div>
-      <h1 class="page-title">คำสั่งซื้อ #{{.Order.ID}}</h1>
-      <span class="badge bg-{{statusColor .Order.Status}} fs-6">{{statusThai .Order.Status}}</span>
-    </div>
-    <!-- Status update form -->
-    <div class="glass-card p-3 d-flex align-items-center gap-2">
-      <form action="/admin/orders/{{.Order.ID}}/status" method="POST" class="d-flex gap-2">
-        <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
-        <select name="status" class="form-select form-select-sm" style="min-width:160px" id="statusSelect">
-          {{range .Statuses}}
-          <option value="{{.}}" {{if eq . $.Order.Status}}selected{{end}}>{{statusThai .}}</option>
-          {{end}}
-        </select>
-        <button type="submit" class="btn btn-sm btn-primary btn-kfry">
-          <i class="bi bi-arrow-repeat me-1"></i>อัปเดต
-        </button>
-      </form>
-    </div>
-  </div>
-
-  <div class="row g-4">
-    <!-- Order info -->
-    <div class="col-md-5">
-      <div class="glass-card p-4 h-100">
-        <h5 class="card-section-title"><i class="bi bi-person me-2"></i>ข้อมูลลูกค้า</h5>
-        <table class="table table-sm table-borderless text-sm mb-0">
-          <tr><td class="text-muted">ชื่อ</td><td><strong>{{.Order.CustomerName}}</strong></td></tr>
-          <tr><td class="text-muted">ประเภท</td>
-            <td>
-              {{if eq .Order.OrderType "delivery"}}
-                <span class="badge bg-info"><i class="bi bi-truck me-1"></i>จัดส่ง</span>
-              {{else}}
-                <span class="badge bg-secondary"><i class="bi bi-shop me-1"></i>รับที่ร้าน</span>
-              {{end}}
-            </td>
-          </tr>
-          {{if .Order.DeliveryAddress}}
-          <tr><td class="text-muted">ที่อยู่</td><td>{{.Order.DeliveryAddress}}</td></tr>
-          {{end}}
-          <tr><td class="text-muted">วันที่</td><td>{{.Order.CreatedAt.Format "02/01/2006 15:04"}}</td></tr>
-          {{if .Order.Payment}}
-          <tr><td class="text-muted">ชำระ</td><td>{{.Order.Payment.PaymentMethod}}</td></tr>
-          <tr><td class="text-muted">สถานะ</td>
-            <td>
-              {{if eq .Order.Payment.PaymentStatus "paid"}}
-                <span class="badge bg-success">ชำระแล้ว</span>
-              {{else}}
-                <span class="badge bg-warning text-dark">รอชำระ</span>
-              {{end}}
-            </td>
-          </tr>
-          {{end}}
-        </table>
-      </div>
-    </div>
-
-    <!-- Order items -->
-    <div class="col-md-7">
-      <div class="glass-card p-4">
-        <h5 class="card-section-title"><i class="bi bi-bag me-2"></i>รายการสินค้า</h5>
-        <table class="table table-sm mb-0">
-          <thead><tr><th>สินค้า</th><th class="text-center">จำนวน</th><th class="text-end">ราคา</th></tr></thead>
-          <tbody>
-            {{range .Order.Items}}
-            <tr>
-              <td>{{.ProductName}}</td>
-              <td class="text-center">×{{.Quantity}}</td>
-              <td class="text-end text-accent">฿{{printf "%.2f" (mul .UnitPrice .Quantity)}}</td>
-            </tr>
-            {{end}}
-          </tbody>
-          <tfoot>
-            {{if gt .Order.DiscountAmount 0.0}}
-            <tr class="border-top text-muted">
-              <td colspan="2" class="text-end"><i class="bi bi-tag-fill text-success me-1"></i>ส่วนลดโปรโมชั่น {{if .Order.PromotionCode}}({{.Order.PromotionCode}}){{end}}</td>
-              <td class="text-end text-success fw-bold">-฿{{printf "%.2f" .Order.DiscountAmount}}</td>
-            </tr>
-            {{end}}
-            <tr class="border-top">
-              <td colspan="2" class="text-end fw-bold">ยอดสุทธิ</td>
-              <td class="text-end text-accent fw-800 fs-5">฿{{printf "%.2f" .Order.TotalPrice}}</td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- Status timeline -->
-  <div class="glass-card p-4 mt-4">
-    <h5 class="card-section-title mb-3"><i class="bi bi-timeline me-2"></i>ไทม์ไลน์สถานะ</h5>
-    <div class="status-timeline d-flex gap-0">
-      {{$current := .Order.Status}}
-      {{range .Statuses}}
-        {{if ne . "cancelled"}}
-        <div class="timeline-step {{if eq . $current}}active{{end}}">
-          <div class="timeline-dot"></div>
-          <div class="timeline-label">{{statusThai .}}</div>
-        </div>
+<div class="container py-4" style="max-width:960px">
+  
+  <!-- ── Top Action Toolbar ──────────────────────────────────────────────── -->
+  <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2 no-print">
+    <div class="d-flex align-items-center gap-2">
+      <a href="/admin/orders" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>กลับไปรายการทั้งหมด
+      </a>
+      <div class="btn-group btn-group-sm ms-2">
+        {{if gt .PrevID 0}}
+        <a href="/admin/orders/{{.PrevID}}" class="btn btn-outline-secondary" title="คำสั่งซื้อก่อนหน้า">
+          <i class="bi bi-chevron-left"></i> #{{.PrevID}}
+        </a>
         {{end}}
+        {{if gt .NextID 0}}
+        <a href="/admin/orders/{{.NextID}}" class="btn btn-outline-secondary" title="คำสั่งซื้อถัดไป">
+          #{{.NextID}} <i class="bi bi-chevron-right"></i>
+        </a>
+        {{end}}
+      </div>
+    </div>
+    
+    <div class="d-flex align-items-center gap-2">
+      <button onclick="window.print()" class="btn btn-sm btn-outline-dark">
+        <i class="bi bi-printer me-1"></i>พิมพ์ใบเสร็จ / ใบแจ้งรายการ
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Header Banner ──────────────────────────────────────────────────── -->
+  <div class="glass-card p-4 mb-4 border-start border-4 border-danger">
+    <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
+      <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+          <h1 class="page-title mb-0">คำสั่งซื้อ #{{.Order.ID}}</h1>
+          <span class="badge bg-{{statusColor .Order.Status}} fs-6" id="statusBadge">
+            {{statusThai .Order.Status}}
+          </span>
+          {{if eq .Order.OrderType "delivery"}}
+            <span class="badge bg-info text-white"><i class="bi bi-truck me-1"></i>จัดส่ง</span>
+          {{else}}
+            <span class="badge bg-secondary"><i class="bi bi-shop me-1"></i>รับที่ร้าน</span>
+          {{end}}
+        </div>
+        <p class="text-muted mb-0 small">
+          <i class="bi bi-clock me-1"></i>สั่งเมื่อ {{.Order.CreatedAt.Format "02/01/2006 เวลา 15:04 น."}}
+        </p>
+      </div>
+
+      <!-- Quick Status Update Box -->
+      <div class="bg-light p-3 rounded-3 border no-print">
+        <div class="text-muted small fw-600 mb-1">เปลี่ยนสถานะคำสั่งซื้อ</div>
+        <form action="/admin/orders/{{.Order.ID}}/status" method="POST" class="d-flex gap-2">
+          <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+          <select name="status" class="form-select form-select-sm" style="min-width:160px">
+            {{range .Statuses}}
+            <option value="{{.}}" {{if eq . $.Order.Status}}selected{{end}}>{{statusThai .}}</option>
+            {{end}}
+          </select>
+          <button type="submit" class="btn btn-sm btn-primary">
+            <i class="bi bi-check2-circle me-1"></i>บันทึก
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Status Timeline Card ───────────────────────────────────────────── -->
+  <div class="glass-card p-4 mb-4">
+    <h5 class="card-section-title"><i class="bi bi-activity me-2 text-danger"></i>ความคืบหน้าสถานะคำสั่งซื้อ</h5>
+    <div class="status-timeline d-flex" id="adminStatusTimeline">
+      {{$current := .Order.Status}}
+      <div class="timeline-step {{if eq "pending" $current}}active{{else if ne "pending" $current}}done{{end}}">
+        <div class="timeline-dot"></div>
+        <div class="timeline-label">รอดำเนินการ</div>
+      </div>
+      <div class="timeline-step {{if eq "preparing" $current}}active{{else if or (eq "ready" $current) (eq "delivering" $current) (eq "completed" $current)}}done{{end}}">
+        <div class="timeline-dot"></div>
+        <div class="timeline-label">กำลังเตรียม</div>
+      </div>
+      {{if eq .Order.OrderType "delivery"}}
+      <div class="timeline-step {{if eq "delivering" $current}}active{{else if eq "completed" $current}}done{{end}}">
+        <div class="timeline-dot"></div>
+        <div class="timeline-label">กำลังจัดส่ง</div>
+      </div>
+      {{else}}
+      <div class="timeline-step {{if eq "ready" $current}}active{{else if eq "completed" $current}}done{{end}}">
+        <div class="timeline-dot"></div>
+        <div class="timeline-label">พร้อมรับที่ร้าน</div>
+      </div>
+      {{end}}
+      <div class="timeline-step {{if eq "completed" $current}}active{{end}}">
+        <div class="timeline-dot"></div>
+        <div class="timeline-label">เสร็จสิ้น</div>
+      </div>
+    </div>
+
+    <!-- Fast Status Advance Shortcut Buttons -->
+    <div class="d-flex gap-2 mt-3 flex-wrap no-print pt-2 border-top">
+      <span class="text-muted small align-self-center me-1">ทางลัดอัปเดตสถานะ:</span>
+      {{if eq $current "pending"}}
+      <form action="/admin/orders/{{.Order.ID}}/status" method="POST" class="d-inline">
+        <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+        <input type="hidden" name="status" value="preparing">
+        <button type="submit" class="btn btn-sm btn-outline-info"><i class="bi bi-fire me-1"></i>เริ่มเตรียมอาหาร</button>
+      </form>
+      {{end}}
+
+      {{if eq $current "preparing"}}
+        {{if eq .Order.OrderType "delivery"}}
+        <form action="/admin/orders/{{.Order.ID}}/status" method="POST" class="d-inline">
+          <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+          <input type="hidden" name="status" value="delivering">
+          <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-truck me-1"></i>เริ่มจัดส่ง</button>
+        </form>
+        {{else}}
+        <form action="/admin/orders/{{.Order.ID}}/status" method="POST" class="d-inline">
+          <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+          <input type="hidden" name="status" value="ready">
+          <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-bag-check me-1"></i>อาหารพร้อมรับ</button>
+        </form>
+        {{end}}
+      {{end}}
+
+      {{if or (eq $current "preparing") (eq $current "ready") (eq $current "delivering")}}
+      <form action="/admin/orders/{{.Order.ID}}/status" method="POST" class="d-inline">
+        <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+        <input type="hidden" name="status" value="completed">
+        <button type="submit" class="btn btn-sm btn-outline-success"><i class="bi bi-check-circle me-1"></i>เสร็จสิ้นออเดอร์</button>
+      </form>
+      {{end}}
+
+      {{if ne $current "cancelled"}}
+      <form action="/admin/orders/{{.Order.ID}}/status" method="POST" class="d-inline ms-auto" onsubmit="return confirm('ยืนยันการยกเลิกคำสั่งซื้อนี้?')">
+        <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+        <input type="hidden" name="status" value="cancelled">
+        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-x-circle me-1"></i>ยกเลิกออเดอร์</button>
+      </form>
       {{end}}
     </div>
   </div>
+
+  <!-- ── 3 Column Info Cards Grid ────────────────────────────────────────── -->
+  <div class="row g-4 mb-4">
+    <!-- Customer Info -->
+    <div class="col-md-4">
+      <div class="glass-card p-4 h-100">
+        <h5 class="card-section-title"><i class="bi bi-person-lines-fill me-2 text-primary"></i>ข้อมูลลูกค้า</h5>
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <div class="customer-avatar" style="width:44px; height:44px; font-size:1.1rem">
+            <i class="bi bi-person-fill"></i>
+          </div>
+          <div>
+            <div class="fw-700 text-dark">{{.Order.CustomerName}}</div>
+            <div class="text-muted small">Customer ID: #{{.Order.CustomerID}}</div>
+          </div>
+        </div>
+        <hr class="my-2 text-muted">
+        <table class="table table-sm table-borderless text-sm mb-0">
+          <tr>
+            <td class="text-muted py-1" style="width:70px"><i class="bi bi-envelope me-1"></i>อีเมล:</td>
+            <td class="py-1">
+              <a href="mailto:{{.Order.CustomerEmail}}" class="link-accent text-break">{{.Order.CustomerEmail}}</a>
+            </td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Service / Fulfillment Info -->
+    <div class="col-md-4">
+      <div class="glass-card p-4 h-100">
+        <h5 class="card-section-title"><i class="bi bi-geo-alt-fill me-2 text-info"></i>ข้อมูลการจัดส่ง</h5>
+        <div class="mb-2">
+          <span class="text-muted small">ประเภทการรับ:</span>
+          {{if eq .Order.OrderType "delivery"}}
+            <span class="badge bg-info text-white ms-1"><i class="bi bi-truck me-1"></i>จัดส่ง (Delivery)</span>
+          {{else}}
+            <span class="badge bg-secondary ms-1"><i class="bi bi-shop me-1"></i>รับที่ร้าน (Pickup)</span>
+          {{end}}
+        </div>
+        {{if .Order.DeliveryAddress}}
+        <div class="mt-2 p-2 bg-light rounded border">
+          <div class="text-muted small fw-600 mb-1"><i class="bi bi-house-door me-1"></i>ที่อยู่จัดส่ง:</div>
+          <div class="text-dark small" style="line-height:1.4">{{.Order.DeliveryAddress}}</div>
+          <div class="mt-2 no-print">
+            <a href="https://maps.google.com/?q={{.Order.DeliveryAddress}}" target="_blank" class="btn btn-xs btn-outline-info text-sm py-0 px-2" style="font-size:0.75rem">
+              <i class="bi bi-map me-1"></i>เปิดใน Google Maps
+            </a>
+          </div>
+        </div>
+        {{else}}
+        <div class="text-muted small mt-2">
+          <i class="bi bi-info-circle me-1"></i>ลูกค้าระบุรับที่หน้าร้าน
+        </div>
+        {{end}}
+      </div>
+    </div>
+
+    <!-- Payment Status Info -->
+    <div class="col-md-4">
+      <div class="glass-card p-4 h-100">
+        <h5 class="card-section-title"><i class="bi bi-credit-card-2-back-fill me-2 text-success"></i>การชำระเงิน</h5>
+        {{if .Order.Payment}}
+        <div class="mb-2">
+          <span class="text-muted small">ช่องทาง:</span>
+          <span class="fw-700 text-dark ms-1">
+            {{if eq .Order.Payment.PaymentMethod "bank_transfer"}}
+              <i class="bi bi-bank text-primary me-1"></i>โอนผ่านธนาคาร
+            {{else}}
+              <i class="bi bi-cash text-success me-1"></i>ชำระเงินสด
+            {{end}}
+          </span>
+        </div>
+        <div class="mb-3">
+          <span class="text-muted small">สถานะการชำระ:</span>
+          {{if eq .Order.Payment.PaymentStatus "paid"}}
+            <span class="badge bg-success ms-1"><i class="bi bi-check-circle me-1"></i>ชำระเรียบร้อยแล้ว</span>
+          {{else}}
+            <span class="badge bg-warning text-dark ms-1"><i class="bi bi-clock-history me-1"></i>รอชำระเงิน</span>
+          {{end}}
+        </div>
+
+        <!-- Admin Payment Toggle Form -->
+        <div class="p-2 bg-light rounded border no-print">
+          <div class="text-muted small fw-600 mb-1">อัปเดตสถานะชำระเงิน</div>
+          <form action="/admin/orders/{{.Order.ID}}/payment-status" method="POST" class="d-flex gap-2">
+            <input type="hidden" name="_csrf" value="{{.CSRFToken}}">
+            <select name="payment_status" class="form-select form-select-sm">
+              <option value="paid" {{if eq .Order.Payment.PaymentStatus "paid"}}selected{{end}}>✅ ชำระเงินแล้ว</option>
+              <option value="pending" {{if eq .Order.Payment.PaymentStatus "pending"}}selected{{end}}>⏳ รอชำระเงิน</option>
+            </select>
+            <button type="submit" class="btn btn-sm btn-outline-success">อัปเดต</button>
+          </form>
+        </div>
+        {{else}}
+        <div class="text-muted small">ไม่มีข้อมูลการชำระเงิน</div>
+        {{end}}
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Items Table Card ────────────────────────────────────────────────── -->
+  <div class="glass-card p-4 mb-4">
+    <h5 class="card-section-title"><i class="bi bi-bag-check-fill me-2 text-danger"></i>รายการอาหารที่สั่งซื้อ</h5>
+    <div class="table-responsive">
+      <table class="table align-middle mb-0">
+        <thead>
+          <tr class="table-light">
+            <th style="width:60px">รูปภาพ</th>
+            <th>ชื่อสินค้า / รายการ</th>
+            <th>หมวดหมู่</th>
+            <th class="text-center" style="width:100px">จำนวน</th>
+            <th class="text-end" style="width:120px">ราคา/ชิ้น</th>
+            <th class="text-end" style="width:130px">รวมเป็นเงิน</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Order.Items}}
+          <tr>
+            <td>
+              {{if .ProductImage}}
+              <img src="{{imageURL .ProductImage}}" class="product-thumb" alt="{{.ProductName}}">
+              {{else}}
+              <div class="product-thumb-placeholder">🍗</div>
+              {{end}}
+            </td>
+            <td>
+              <div class="fw-700 text-dark">{{.ProductName}}</div>
+              <div class="text-muted small">รหัสสินค้า: #{{.ProductID}}</div>
+            </td>
+            <td>
+              <span class="badge bg-light text-dark border">{{if .ProductCategory}}{{.ProductCategory}}{{else}}ทั่วไป{{end}}</span>
+            </td>
+            <td class="text-center">
+              <span class="badge bg-danger-soft text-danger fs-6 px-3">×{{.Quantity}}</span>
+            </td>
+            <td class="text-end fw-500">฿{{printf "%.2f" .UnitPrice}}</td>
+            <td class="text-end text-accent fw-800 fs-6">฿{{printf "%.2f" .Subtotal}}</td>
+          </tr>
+          {{end}}
+        </tbody>
+        <tfoot class="border-top-2">
+          {{if gt .Order.DiscountAmount 0.0}}
+          <tr>
+            <td colspan="5" class="text-end text-muted fw-600">ยอดรวมสินค้าก่อนส่วนลด:</td>
+            <td class="text-end text-dark fw-700">฿{{printf "%.2f" .Order.Subtotal}}</td>
+          </tr>
+          <tr>
+            <td colspan="5" class="text-end text-success fw-600">
+              <i class="bi bi-tag-fill me-1"></i>ส่วนลดส่วนลดโปรโมชั่น {{if .Order.PromotionCode}}({{.Order.PromotionCode}}){{end}}:
+            </td>
+            <td class="text-end text-success fw-700">-฿{{printf "%.2f" .Order.DiscountAmount}}</td>
+          </tr>
+          {{end}}
+          <tr class="table-light">
+            <td colspan="5" class="text-end fs-5 fw-800 text-dark">ยอดสุทธิชำระทั้งสิ้น:</td>
+            <td class="text-end text-danger fs-4 fw-800">฿{{printf "%.2f" .Order.TotalPrice}}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
 </div>
+
+<!-- ── Print Stylesheet ──────────────────────────────────────────────────── -->
+<style>
+@media print {
+  body { background: #fff !important; color: #000 !important; }
+  .kfry-navbar, .kfry-footer, .no-print, nav, footer { display: none !important; }
+  .container { max-width: 100% !important; padding: 0 !important; }
+  .glass-card { box-shadow: none !important; border: 1px solid #ccc !important; }
+  .page-title { font-size: 1.5rem !important; }
+}
+</style>
 {{end}}
