@@ -31,13 +31,13 @@ func SeedDefaultData(db *sql.DB) {
 	var productCount int
 	if err := db.QueryRow(`SELECT COUNT(*) FROM products`).Scan(&productCount); err == nil && productCount == 0 {
 		products := []models.Product{
-			{Name: "ไก่ทอดดั้งเดิม (Original)", Description: "ไก่ทอดกรอบสูตรต้นตำรับจากโซล รสชาติเข้มข้น กรอบนอกนุ่มใน", Price: 159, Category: "ไก่ทอด", Stock: 50, Status: "available"},
-			{Name: "ไก่ทอดซอสพริก (Spicy Yangnyeom)", Description: "ไก่ทอดราดซอสพริกเกาหลีเข้มข้น หอมหวานเผ็ดกำลังดี", Price: 179, Category: "ไก่ทอด", Stock: 40, Status: "available"},
-			{Name: "ไก่ทอดซอสน้ำผึ้งกระเทียม (Honey Garlic)", Description: "ไก่ทอดราดซอสน้ำผึ้งแท้และกระเทียมเจียวหอมกรุ่น", Price: 189, Category: "ไก่ทอด", Stock: 35, Status: "available"},
-			{Name: "ชีสบอล (Cheese Ball 5 ชิ้น)", Description: "ชีสบอลสอดไส้มอสซาเรลลาชีสเยิ้ม ทอดสีทองกรอบนอก", Price: 79, Category: "ของทานเล่น", Stock: 60, Status: "available"},
-			{Name: "เฟรนช์ฟรายส์", Description: "มันฝรั่งแท่งทอดกรอบ โรยเกลือทะเล เสิร์ฟร้อนๆ", Price: 59, Category: "ของทานเล่น", Stock: 80, Status: "available"},
-			{Name: "โคล่าเย็น", Description: "เครื่องดื่มน้ำอัดลมเย็นสดชื่น", Price: 35, Category: "เครื่องดื่ม", Stock: 100, Status: "available"},
-			{Name: "ชาเขียวนมเกาหลี", Description: "ชาเขียวนมเย็นสไตล์คาเฟ่เกาหลี หอมละมุน", Price: 55, Category: "เครื่องดื่ม", Stock: 80, Status: "available"},
+			{Name: "ไก่ทอดดั้งเดิม (Original)", Description: "ไก่ทอดกรอบสูตรต้นตำรับจากโซล รสชาติเข้มข้น กรอบนอกนุ่มใน", Price: 159, Category: "ไก่ทอด", Stock: 50, ImagePath: "/static/images/uploads/original_chicken.jpg", Status: "available"},
+			{Name: "ไก่ทอดซอสพริก (Spicy Yangnyeom)", Description: "ไก่ทอดราดซอสพริกเกาหลีเข้มข้น หอมหวานเผ็ดกำลังดี", Price: 179, Category: "ไก่ทอด", Stock: 40, ImagePath: "/static/images/uploads/spicy_chicken.jpg", Status: "available"},
+			{Name: "ไก่ทอดซอสน้ำผึ้งกระเทียม (Honey Garlic)", Description: "ไก่ทอดราดซอสน้ำผึ้งแท้และกระเทียมเจียวหอมกรุ่น", Price: 189, Category: "ไก่ทอด", Stock: 35, ImagePath: "/static/images/uploads/honey_garlic_chicken.jpg", Status: "available"},
+			{Name: "ชีสบอล (Cheese Ball 5 ชิ้น)", Description: "ชีสบอลสอดไส้มอสซาเรลลาชีสเยิ้ม ทอดสีทองกรอบนอก", Price: 79, Category: "ของทานเล่น", Stock: 60, ImagePath: "/static/images/uploads/cheese_ball.jpg", Status: "available"},
+			{Name: "เฟรนช์ฟรายส์", Description: "มันฝรั่งแท่งทอดกรอบ โรยเกลือทะเล เสิร์ฟร้อนๆ", Price: 59, Category: "ของทานเล่น", Stock: 80, ImagePath: "/static/images/uploads/french_fries.jpg", Status: "available"},
+			{Name: "โคล่าเย็น", Description: "เครื่องดื่มน้ำอัดลมเย็นสดชื่น", Price: 35, Category: "เครื่องดื่ม", Stock: 100, ImagePath: "/static/images/uploads/cola.jpg", Status: "available"},
+			{Name: "ชาเขียวนมเกาหลี", Description: "ชาเขียวนมเย็นสไตล์คาเฟ่เกาหลี หอมละมุน", Price: 55, Category: "เครื่องดื่ม", Stock: 80, ImagePath: "/static/images/uploads/matcha_latte.jpg", Status: "available"},
 		}
 		for _, p := range products {
 			pp := p

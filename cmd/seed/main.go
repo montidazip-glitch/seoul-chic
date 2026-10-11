@@ -30,13 +30,13 @@ func main() {
 	db.QueryRow(`SELECT COUNT(*) FROM products`).Scan(&productCount)
 	if productCount == 0 {
 		products := []models.Product{
-			{Name: "ไก่ทอดดั้งเดิม (Original)", Description: "ไก่ทอดกรอบสูตรต้นตำรับจากโซล รสชาติเข้มข้น", Price: 159, Category: "ไก่ทอด", Stock: 50, Status: "available"},
-			{Name: "ไก่ทอดซอสพริก (Spicy)", Description: "ไก่ทอดราดซอสพริกเกาหลี หอมหวานเผ็ดกำลังดี", Price: 179, Category: "ไก่ทอด", Stock: 40, Status: "available"},
-			{Name: "ไก่ทอดซอสน้ำผึ้งกระเทียม", Description: "ไก่ทอดราดซอสน้ำผึ้งกระเทียมหอมๆ", Price: 189, Category: "ไก่ทอด", Stock: 35, Status: "available"},
-			{Name: "ชีสบอล (Cheese Ball 5 ชิ้น)", Description: "ชีสบอลสอดไส้ชีสเยิ้ม ทอดกรอบนอก", Price: 79, Category: "ของทานเล่น", Stock: 60, Status: "available"},
-			{Name: "เฟรนช์ฟรายส์", Description: "มันฝรั่งทอดกรอบ โรยเกลือทะเล", Price: 59, Category: "ของทานเล่น", Stock: 80, Status: "available"},
-			{Name: "โคลาเย็น", Description: "โคล่าเย็นชื่นใจ", Price: 35, Category: "เครื่องดื่ม", Stock: 100, Status: "available"},
-			{Name: "ชาเย็นเกาหลี", Description: "ชาเขียวนมเย็นสูตรเกาหลี", Price: 55, Category: "เครื่องดื่ม", Stock: 80, Status: "available"},
+			{Name: "ไก่ทอดดั้งเดิม (Original)", Description: "ไก่ทอดกรอบสูตรต้นตำรับจากโซล รสชาติเข้มข้น", Price: 159, Category: "ไก่ทอด", Stock: 50, ImagePath: "/static/images/uploads/original_chicken.jpg", Status: "available"},
+			{Name: "ไก่ทอดซอสพริก (Spicy)", Description: "ไก่ทอดราดซอสพริกเกาหลี หอมหวานเผ็ดกำลังดี", Price: 179, Category: "ไก่ทอด", Stock: 40, ImagePath: "/static/images/uploads/spicy_chicken.jpg", Status: "available"},
+			{Name: "ไก่ทอดซอสน้ำผึ้งกระเทียม", Description: "ไก่ทอดราดซอสน้ำผึ้งกระเทียมหอมๆ", Price: 189, Category: "ไก่ทอด", Stock: 35, ImagePath: "/static/images/uploads/honey_garlic_chicken.jpg", Status: "available"},
+			{Name: "ชีสบอล (Cheese Ball 5 ชิ้น)", Description: "ชีสบอลสอดไส้ชีสเยิ้ม ทอดกรอบนอก", Price: 79, Category: "ของทานเล่น", Stock: 60, ImagePath: "/static/images/uploads/cheese_ball.jpg", Status: "available"},
+			{Name: "เฟรนช์ฟรายส์", Description: "มันฝรั่งทอดกรอบ โรยเกลือทะเล", Price: 59, Category: "ของทานเล่น", Stock: 80, ImagePath: "/static/images/uploads/french_fries.jpg", Status: "available"},
+			{Name: "โคลาเย็น", Description: "โคล่าเย็นชื่นใจ", Price: 35, Category: "เครื่องดื่ม", Stock: 100, ImagePath: "/static/images/uploads/cola.jpg", Status: "available"},
+			{Name: "ชาเย็นเกาหลี", Description: "ชาเขียวนมเย็นสูตรเกาหลี", Price: 55, Category: "เครื่องดื่ม", Stock: 80, ImagePath: "/static/images/uploads/matcha_latte.jpg", Status: "available"},
 		}
 		for _, p := range products {
 			pp := p
