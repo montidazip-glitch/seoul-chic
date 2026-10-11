@@ -32,7 +32,12 @@
       <ul class="navbar-nav ms-auto align-items-center gap-1">
         {{if eq .Role "admin"}}
           <li class="nav-item"><a class="nav-link text-warning fw-bold" href="/menu" title="ไปที่หน้าร้านสำหรับลูกค้าเพื่อสั่งซื้อไก่ทอด"><i class="bi bi-shop"></i> สั่งซื้อ (หน้าร้าน)</a></li>
-          <li class="nav-item"><a class="nav-link" href="/cart"><i class="bi bi-cart3"></i> ตะกร้า</a></li>
+          <li class="nav-item">
+            <a class="nav-link position-relative cart-nav-link" href="/cart" id="navCartLink">
+              <i class="bi bi-cart3"></i> ตะกร้า
+              <span class="badge rounded-pill cart-badge {{if not .CartCount}}d-none{{end}}">{{if .CartCount}}{{.CartCount}}{{else}}0{{end}}</span>
+            </a>
+          </li>
           <li class="nav-item"><a class="nav-link" href="/admin/dashboard"><i class="bi bi-speedometer2"></i> แดชบอร์ด</a></li>
           <li class="nav-item"><a class="nav-link" href="/admin/products"><i class="bi bi-box-seam"></i> สินค้า</a></li>
           <li class="nav-item"><a class="nav-link" href="/admin/orders"><i class="bi bi-receipt"></i> คำสั่งซื้อ</a></li>
@@ -47,7 +52,12 @@
           </li>
         {{else if eq .Role "customer"}}
           <li class="nav-item"><a class="nav-link" href="/menu"><i class="bi bi-grid"></i> เมนู</a></li>
-          <li class="nav-item"><a class="nav-link" href="/cart"><i class="bi bi-cart3"></i> ตะกร้า</a></li>
+          <li class="nav-item">
+            <a class="nav-link position-relative cart-nav-link" href="/cart" id="navCartLink">
+              <i class="bi bi-cart3"></i> ตะกร้า
+              <span class="badge rounded-pill cart-badge {{if not .CartCount}}d-none{{end}}">{{if .CartCount}}{{.CartCount}}{{else}}0{{end}}</span>
+            </a>
+          </li>
           <li class="nav-item"><a class="nav-link" href="/orders"><i class="bi bi-bag-check"></i> คำสั่งซื้อ</a></li>
           <li class="nav-item ms-2">
             <form action="/logout" method="POST" class="d-inline">
@@ -57,6 +67,12 @@
           </li>
         {{else}}
           <li class="nav-item"><a class="nav-link" href="/menu"><i class="bi bi-grid"></i> เมนูอาหาร</a></li>
+          <li class="nav-item">
+            <a class="nav-link position-relative cart-nav-link" href="/cart" id="navCartLink">
+              <i class="bi bi-cart3"></i> ตะกร้า
+              <span class="badge rounded-pill cart-badge {{if not .CartCount}}d-none{{end}}">{{if .CartCount}}{{.CartCount}}{{else}}0{{end}}</span>
+            </a>
+          </li>
           <li class="nav-item"><a class="nav-link" href="/login"><i class="bi bi-person-circle"></i> เข้าสู่ระบบ</a></li>
           <li class="nav-item"><a class="nav-link text-warning fw-semibold" href="/admin/login"><i class="bi bi-shield-lock"></i> แอดมิน</a></li>
           <li class="nav-item"><a class="nav-link btn-glow ms-2 px-3 rounded-pill" href="/register"><i class="bi bi-person-plus"></i> สมัครสมาชิก</a></li>

@@ -57,6 +57,7 @@ func (h *CustomerHandler) Menu(w http.ResponseWriter, r *http.Request) {
 		"UserName":     userName,
 		"CSRFToken":    middleware.GetCSRFToken(r, w),
 		"Flashes":      flashData(r, w),
+		"CartCount":    GetCartCount(r),
 	}
 	h.Tmpl.ExecuteTemplate(w, "customer_menu.html", data)
 }
@@ -76,6 +77,7 @@ func (h *CustomerHandler) CartView(w http.ResponseWriter, r *http.Request) {
 		"Total":     total,
 		"CSRFToken": middleware.GetCSRFToken(r, w),
 		"Flashes":   flashData(r, w),
+		"CartCount": GetCartCount(r),
 	}
 	h.Tmpl.ExecuteTemplate(w, "customer_cart.html", data)
 }
@@ -90,6 +92,15 @@ func (h *CustomerHandler) CartAdd(w http.ResponseWriter, r *http.Request) {
 
 	p, err := models.GetProduct(h.DB, productID)
 	if err != nil || p.Status != "available" {
+		if isAjax(r) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"message": "ไม่พบสินค้าหรือสินค้าไม่พร้อมจำหน่าย",
+			})
+			return
+		}
 		session.SetFlash(r, w, "error", "ไม่พบสินค้าหรือสินค้าไม่พร้อมจำหน่าย")
 		http.Redirect(w, r, "/menu", http.StatusFound)
 		return
@@ -113,6 +124,23 @@ func (h *CustomerHandler) CartAdd(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	saveCart(r, w, cart)
+
+	totalCount := 0
+	for _, item := range cart {
+		totalCount += item.Quantity
+	}
+
+	if isAjax(r) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success":    true,
+			"message":    "เพิ่ม '" + p.Name + "' ลงตะกร้าแล้ว!",
+			"cart_count": totalCount,
+			"product":    p.Name,
+		})
+		return
+	}
+
 	session.SetFlash(r, w, "success", "เพิ่ม '"+p.Name+"' ลงตะกร้าแล้ว!")
 	http.Redirect(w, r, "/menu", http.StatusFound)
 }
@@ -244,6 +272,7 @@ func (h *CustomerHandler) OrderNewGET(w http.ResponseWriter, r *http.Request) {
 		"Total":       total,
 		"CSRFToken":   middleware.GetCSRFToken(r, w),
 		"Flashes":     flashData(r, w),
+		"CartCount":   GetCartCount(r),
 	}
 	h.Tmpl.ExecuteTemplate(w, "customer_order_confirm.html", data)
 }
@@ -312,10 +341,12 @@ func (h *CustomerHandler) OrderList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data := map[string]interface{}{
-		"Title":   "คำสั่งซื้อของฉัน",
-		"Role":    session.GetUserRole(r),
-		"Orders":  orders,
-		"Flashes": flashData(r, w),
+		"Title":     "คำสั่งซื้อของฉัน",
+		"Role":      session.GetUserRole(r),
+		"Orders":    orders,
+		"CSRFToken": middleware.GetCSRFToken(r, w),
+		"Flashes":   flashData(r, w),
+		"CartCount": GetCartCount(r),
 	}
 	h.Tmpl.ExecuteTemplate(w, "customer_orders.html", data)
 }
@@ -338,6 +369,7 @@ func (h *CustomerHandler) OrderDetail(w http.ResponseWriter, r *http.Request) {
 		"Order":     order,
 		"CSRFToken": middleware.GetCSRFToken(r, w),
 		"Flashes":   flashData(r, w),
+		"CartCount": GetCartCount(r),
 	}
 	h.Tmpl.ExecuteTemplate(w, "customer_order_detail.html", data)
 }
@@ -373,6 +405,16 @@ func getCart(r *http.Request) []models.CartItem {
 	var cart []models.CartItem
 	json.Unmarshal([]byte(raw), &cart)
 	return cart
+}
+
+// GetCartCount returns the total number of items currently in the user's cart.
+func GetCartCount(r *http.Request) int {
+	cart := getCart(r)
+	count := 0
+	for _, item := range cart {
+		count += item.Quantity
+	}
+	return count
 }
 
 func saveCart(r *http.Request, w http.ResponseWriter, cart []models.CartItem) {

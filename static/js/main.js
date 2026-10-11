@@ -85,14 +85,98 @@ document.addEventListener('DOMContentLoaded', function () {
     }, 5000);
   });
 
-  // ── Add-to-cart button feedback ────────────────────────────────
+  // ── Toast notification helper ──────────────────────────────────
+  function showToast(message, icon) {
+    icon = icon || '🍗';
+    var existing = document.querySelector('.kfry-toast');
+    if (existing) existing.remove();
+
+    var toast = document.createElement('div');
+    toast.className = 'kfry-toast';
+    toast.innerHTML = '<span style="font-size:1.4rem">' + icon + '</span><span>' + message + '</span>';
+    document.body.appendChild(toast);
+
+    setTimeout(function () {
+      toast.classList.add('hide');
+      setTimeout(function () { toast.remove(); }, 320);
+    }, 2800);
+  }
+
+  // ── Add-to-cart with dynamic badge & AJAX feedback ───────────────
   document.querySelectorAll('.add-cart-form').forEach(function (form) {
-    form.addEventListener('submit', function () {
-      var btn = this.querySelector('button[type="submit"]');
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var btn = form.querySelector('button[type="submit"]');
+      var originalBtnHtml = btn ? btn.innerHTML : '';
       if (btn) {
-        btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
         btn.disabled = true;
       }
+
+      var formData = new FormData(form);
+      fetch(form.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json'
+        }
+      })
+      .then(function (res) {
+        if (res.redirected) {
+          window.location.href = res.url;
+          return null;
+        }
+        var contentType = res.headers.get('content-type') || '';
+        if (contentType.indexOf('application/json') !== -1) {
+          return res.json();
+        }
+        window.location.reload();
+        return null;
+      })
+      .then(function (data) {
+        if (!data) return;
+        if (data.success) {
+          // Update all cart badges (navbar, promo banner, etc.)
+          var badges = document.querySelectorAll('.cart-badge');
+          badges.forEach(function (badge) {
+            badge.textContent = data.cart_count;
+            if (data.cart_count > 0) {
+              badge.classList.remove('d-none');
+            } else {
+              badge.classList.add('d-none');
+            }
+            // Trigger bouncy pop animation
+            badge.classList.remove('badge-pop');
+            void badge.offsetWidth;
+            badge.classList.add('badge-pop');
+          });
+
+          // Show checkmark on button temporarily
+          if (btn) {
+            btn.innerHTML = '<i class="bi bi-check-lg text-white"></i>';
+            btn.classList.add('btn-success');
+            setTimeout(function () {
+              btn.innerHTML = originalBtnHtml;
+              btn.classList.remove('btn-success');
+              btn.disabled = false;
+            }, 1200);
+          }
+
+          // Show floating toast
+          showToast(data.message || 'เพิ่มสินค้าลงตะกร้าแล้ว!', '🍗');
+        } else {
+          showToast(data.message || 'เกิดข้อผิดพลาดในการเพิ่มสินค้า', '⚠️');
+          if (btn) {
+            btn.innerHTML = originalBtnHtml;
+            btn.disabled = false;
+          }
+        }
+      })
+      .catch(function () {
+        // Fallback to normal form submit if fetch fails
+        form.submit();
+      });
     });
   });
 

@@ -3,9 +3,16 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/mux"
 )
+
+// isAjax checks if the HTTP request is an AJAX / Fetch request.
+func isAjax(r *http.Request) bool {
+	return r.Header.Get("X-Requested-With") == "XMLHttpRequest" ||
+		strings.Contains(r.Header.Get("Accept"), "application/json")
+}
 
 // muxVars is a thin wrapper so other files in this package can call gorilla/mux Vars.
 func muxVars(r *http.Request) map[string]string {

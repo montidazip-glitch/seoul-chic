@@ -59,24 +59,44 @@
       <!-- Image Upload Section -->
       <div class="mb-4">
         <label class="form-label fw-bold">รูปภาพสินค้า</label>
-        
-        <!-- File Input -->
-        <div class="mb-2">
-          <input type="file" class="form-control" id="image_file" name="image_file" accept="image/png, image/jpeg, image/webp, image/gif">
-          <div class="form-text">อัปโหลดไฟล์รูปภาพจากเครื่อง (.jpg, .png, .webp สูงสุด 10MB)</div>
+
+        <div id="dropZone" class="image-drop-zone {{if and .Product .Product.ImagePath}}has-image{{end}}">
+          <!-- Placeholder (no image) -->
+          <div class="drop-placeholder" id="dropPlaceholder" {{if and .Product .Product.ImagePath}}style="display:none"{{end}}>
+            <div class="drop-icon">🖼️</div>
+            <div class="drop-title">ลากรูปภาพมาวางที่นี่</div>
+            <div class="drop-sub">หรือคลิกเพื่อเลือกไฟล์</div>
+            <div class="drop-hint">รองรับ .jpg, .png, .webp (สูงสุด 10MB)</div>
+            <label for="image_file" class="btn btn-outline-primary btn-sm mt-3" style="cursor:pointer">
+              <i class="bi bi-upload me-1"></i> เลือกรูปภาพ
+            </label>
+          </div>
+
+          <!-- Preview (has image) -->
+          <div class="drop-preview" id="dropPreview" {{if not (and .Product .Product.ImagePath)}}style="display:none"{{end}}>
+            <img id="imagePreview"
+                 src="{{if and .Product .Product.ImagePath}}{{imageURL .Product.ImagePath}}{{end}}"
+                 alt="ตัวอย่างรูปภาพ" class="drop-preview-img">
+            <div class="drop-preview-actions">
+              <label for="image_file" class="btn btn-sm btn-white" style="cursor:pointer">
+                <i class="bi bi-arrow-repeat me-1"></i>เปลี่ยนรูป
+              </label>
+              <button type="button" class="btn btn-sm btn-white text-danger" id="removeImageBtn">
+                <i class="bi bi-x-circle me-1"></i>ลบรูป
+              </button>
+            </div>
+          </div>
+
+          <!-- Hidden file input -->
+          <input type="file" class="d-none" id="image_file" name="image_file"
+                 accept="image/png,image/jpeg,image/webp,image/gif">
         </div>
 
-        <!-- Image Preview -->
-        <div id="imagePreviewContainer" class="p-2 border border-secondary rounded mb-2 text-center {{if and .Product .Product.ImagePath}}{{else}}d-none{{end}}">
-          <img id="imagePreview" src="{{if and .Product .Product.ImagePath}}{{.Product.ImagePath}}{{end}}" alt="ตัวอย่างรูปภาพ" style="max-height: 180px; max-width: 100%; object-fit: contain; border-radius: 8px;">
-          <div class="small text-muted mt-1">ตัวอย่างรูปภาพ</div>
-        </div>
-
-        <!-- Fallback text path -->
+        <!-- Fallback URL input -->
         <div class="mt-2">
-          <label for="image_path" class="form-label small text-muted">หรือระบุ URL / Path รูปภาพโดยตรง:</label>
+          <label for="image_path" class="form-label small text-muted">หรือวาง URL รูปภาพโดยตรง:</label>
           <input type="text" class="form-control form-control-sm" id="image_path" name="image_path"
-                 placeholder="/static/images/crispy.jpg หรือ URL รูปภาพ"
+                 placeholder="https://... หรือ /static/images/..."
                  value="{{if .Product}}{{.Product.ImagePath}}{{end}}">
         </div>
       </div>
@@ -91,23 +111,163 @@
   </div>
 </div>
 
+<style>
+/* ── Image Drop Zone ──────────────────────────────────────── */
+.image-drop-zone {
+  position: relative;
+  border: 2.5px dashed #CBD5E1;
+  border-radius: 14px;
+  background: #F8FAFC;
+  transition: border-color 0.2s, background 0.2s;
+  cursor: pointer;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.image-drop-zone.drag-over {
+  border-color: #DC2626;
+  background: #FEF2F2;
+}
+.image-drop-zone.has-image {
+  border-style: solid;
+  border-color: #E2E8F0;
+  background: #F1F5F9;
+}
+
+.drop-placeholder {
+  text-align: center;
+  padding: 36px 24px;
+  pointer-events: none;
+}
+.drop-placeholder label { pointer-events: all; }
+.drop-icon { font-size: 3rem; margin-bottom: 10px; }
+.drop-title { font-size: 1.05rem; font-weight: 700; color: #1E293B; margin-bottom: 4px; }
+.drop-sub { font-size: 0.9rem; color: #64748B; }
+.drop-hint { font-size: 0.78rem; color: #94A3B8; margin-top: 4px; }
+
+.drop-preview {
+  width: 100%;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 20px;
+}
+.drop-preview-img {
+  max-height: 220px;
+  max-width: 100%;
+  border-radius: 10px;
+  object-fit: contain;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+}
+.drop-preview-actions {
+  display: flex;
+  gap: 10px;
+}
+.btn-white {
+  background: #FFFFFF;
+  border: 1.5px solid #E2E8F0;
+  color: #334155;
+  font-weight: 600;
+  border-radius: 8px;
+}
+.btn-white:hover {
+  background: #F1F5F9;
+}
+</style>
+
 <script>
-  // Client-side image preview
-  const fileInput = document.getElementById('image_file');
-  const preview = document.getElementById('imagePreview');
-  const previewContainer = document.getElementById('imagePreviewContainer');
-  if (fileInput && preview && previewContainer) {
-    fileInput.addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = function(evt) {
-          preview.src = evt.target.result;
-          previewContainer.classList.remove('d-none');
-        };
-        reader.readAsDataURL(file);
-      }
+(function () {
+  const dropZone        = document.getElementById('dropZone');
+  const fileInput       = document.getElementById('image_file');
+  const placeholder     = document.getElementById('dropPlaceholder');
+  const preview         = document.getElementById('dropPreview');
+  const previewImg      = document.getElementById('imagePreview');
+  const removeBtn       = document.getElementById('removeImageBtn');
+  const imagePathInput  = document.getElementById('image_path');
+
+  function showPreview(src) {
+    previewImg.src = src;
+    placeholder.style.display = 'none';
+    preview.style.display     = '';
+    dropZone.classList.add('has-image');
+  }
+
+  function showPlaceholder() {
+    previewImg.src = '';
+    fileInput.value = '';
+    if (imagePathInput) imagePathInput.value = '';
+    preview.style.display     = 'none';
+    placeholder.style.display = '';
+    dropZone.classList.remove('has-image');
+  }
+
+  function handleFile(file) {
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = function (e) { showPreview(e.target.result); };
+    reader.readAsDataURL(file);
+  }
+
+  // Click on drop zone (not on label/btn) → trigger file picker
+  dropZone.addEventListener('click', function (e) {
+    if (e.target.tagName === 'LABEL' || e.target.tagName === 'BUTTON' ||
+        e.target.closest('label') || e.target.closest('button')) return;
+    fileInput.click();
+  });
+
+  // File input change
+  fileInput.addEventListener('change', function () {
+    if (this.files && this.files[0]) handleFile(this.files[0]);
+  });
+
+  // Drag & Drop
+  ['dragenter', 'dragover'].forEach(function (evt) {
+    dropZone.addEventListener(evt, function (e) {
+      e.preventDefault();
+      dropZone.classList.add('drag-over');
+    });
+  });
+  ['dragleave', 'drop'].forEach(function (evt) {
+    dropZone.addEventListener(evt, function (e) {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+    });
+  });
+  dropZone.addEventListener('drop', function (e) {
+    const dt   = e.dataTransfer;
+    const file = dt && dt.files && dt.files[0];
+    if (file) {
+      // Assign to file input if possible (some browsers allow it)
+      try {
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        fileInput.files = dataTransfer.files;
+      } catch (_) {}
+      handleFile(file);
+    }
+  });
+
+  // URL input → live preview
+  if (imagePathInput) {
+    imagePathInput.addEventListener('input', function () {
+      const url = this.value.trim();
+      if (url) { showPreview(url); }
+      else if (!fileInput.files || !fileInput.files[0]) { showPlaceholder(); }
     });
   }
+
+  // Remove button
+  if (removeBtn) {
+    removeBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      showPlaceholder();
+    });
+  }
+})();
 </script>
 {{end}}
