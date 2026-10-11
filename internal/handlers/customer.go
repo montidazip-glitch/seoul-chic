@@ -19,9 +19,17 @@ type CustomerHandler struct {
 	Tmpl TemplateRenderer
 }
 
-// Home redirects to /menu.
+// Home redirects to /login if unauthenticated, or to the dashboard/menu if logged in.
 func (h *CustomerHandler) Home(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/menu", http.StatusFound)
+	if id := session.GetUserID(r); id != 0 {
+		if session.GetUserRole(r) == "admin" {
+			http.Redirect(w, r, "/admin/dashboard", http.StatusFound)
+		} else {
+			http.Redirect(w, r, "/menu", http.StatusFound)
+		}
+		return
+	}
+	http.Redirect(w, r, "/login", http.StatusFound)
 }
 
 // ─── Menu ────────────────────────────────────────────────────────────────────
